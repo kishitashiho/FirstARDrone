@@ -6,7 +6,7 @@
 // Return value : SUCCESS:0  ERROR:-1
 // --------------------------------------------------------------------------
 
-// AR.Drone class
+
 ARDrone ardrone;
 
 void roll(int move_count);
@@ -15,6 +15,7 @@ void stop(int move_count);
 
 double vx = 0.0, vy = 0.0, vz = 0.0, vr = 0.0;
 
+//Ç±Ç±ÇÕÉÅÉCÉìÇ≈Ç∑
 
 int main(int argc, char **argv)
 {
