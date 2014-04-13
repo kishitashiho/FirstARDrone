@@ -9,6 +9,8 @@
 
 ARDrone ardrone;
 
+using namespace cv;
+
 void roll(int interval_sec);
 void forward(int interval_sec);
 void stop(int interval_sec);
@@ -188,59 +190,68 @@ void rise(int interval_sec){
 }
 
 void RedChase() {
+	    
 	while(1) {
 
-		image = ardrone.getImage();
+		Mat red_image;
+		Mat hsv_image;
+		Mat image = ardrone.getImage();
+		Mat niti = Mat(Size(image.cols,image.rows),CV_8UC3);
 
-		IplImage *red_image = cvCreateImage(cvSize(image->width, image->height), IPL_DEPTH_8U, 3);
-		IplImage *hsv_image = cvCreateImage(cvSize(image->width, image->height), IPL_DEPTH_8U, 3);
-		IplImage *niti = cvCreateImage(cvSize(image->width, image->height), IPL_DEPTH_8U, 3);
+		cvtColor(image, hsv_image, CV_BGR2HSV);
 
-		cvCvtColor(image, hsv_image,CV_BGR2HSV);
-		cvSetZero(niti);
+		int x=0, y=0, cnt=0;
+		for(int i=0; i<hsv_image.rows; i++) {
+			for(int j=0; j<hsv_image.cols; j++) {
 
-		for(int y=0; y<hsv_image->height; y++) {
-			for(int x=0; x<hsv_image->width; x++) {
-				int n = (x + y * hsv_image->width) * 3;
-				h = (unsigned char) * (hsv_image->imageData + n);
-				s= (unsigned char) * (hsv_image->imageData + n + 1);
-				v = (unsigned char) * (hsv_image->imageData + n + 2);
+				int col = hsv_image.step*i+(j*3);
+				if(hsv_image.data[col] < 10 || 170 < hsv_image.data[col]) {
 
-				if(h < 10 || 170 < h) {
+					if(90 < hsv_image.data[col]) {
 
-					if(90 < s) {
+						niti.data[col] = 255;
+						niti.data[col+1] = 255;
+						niti.data[col+2] = 255;
 
-						((unsigned char*)(niti->imageData + niti->widthStep*y))[x*3] = 255;
-						((unsigned char*)(niti->imageData + niti->widthStep*y))[x*3+1] = 255;
-						((unsigned char*)(niti->imageData + niti->widthStep*y))[x*3+2] = 255;
+						x += j;
+						y += i;
+						cnt++;
 
 					}
 				}
+
+				else{
+
+					niti.data[col] = 0;
+					niti.data[col+1] = 0;
+					niti.data[col+2] = 0;
+
+				}
+				
 			}
+
 		}
-		
-		cvErode(niti, niti);
-		cvErode(niti, niti);
-		cvErode(niti, niti);
-		cvErode(niti, niti);
+		if(cnt!=0) {
+			x /= cnt;
+			y /= cnt;
 
-		cvDilate(niti, niti);
-		cvDilate(niti, niti);
-		cvDilate(niti, niti);
-		cvDilate(niti, niti);
+			circle(image, Point(x, y), 10, Scalar(255, 0, 0), -1, CV_AA);
+		}
 
-		cvShowImage("Camera", image);
-		cvShowImage("sub", niti);
 
-		cvReleaseImage(&red_image);
-		cvReleaseImage(&niti);
-		cvReleaseImage(&hsv_image);
 
+
+		dilate(niti, niti, Mat());
+		erode(niti, niti, Mat());
+
+		if(!niti.empty()) imshow("camera",image);
+		if(!niti.empty()) imshow("niti",niti);
 
 		bool controlFlag = emergency();
 		if(controlFlag == false) ardrone.close();
 
 	}
+
 }
 
 bool emergency() {
@@ -253,7 +264,7 @@ bool emergency() {
 	if (!ardrone.update()) return false;
 
 	// Get an image
-	IplImage *image = ardrone.getImage();
+	Mat img = ardrone.getImage();
 
 	// Take off / Landing 
 	if (key == ' ') {
@@ -276,7 +287,7 @@ bool emergency() {
 	if (key == 'c') ardrone.setCamera(++mode%4);
 
 	// Display the image
-	cvShowImage("camera", image);
+	//imshow("camera1", img);
 
 	return true;
 
