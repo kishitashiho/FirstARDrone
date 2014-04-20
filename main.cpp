@@ -1,5 +1,6 @@
 #include "ardrone/ardrone.h"
 #include "time.h"
+#include "math.h"
 
 // --------------------------------------------------------------------------
 // main(Number of arguments, Argument values)
@@ -10,12 +11,14 @@
 ARDrone ardrone;
 
 using namespace cv;
+using namespace std;
 
-void roll(int interval_sec);
-void forward(int interval_sec);
-void stop(int interval_sec);
-void rise(int interval_sec);
+void Roll(int interval_sec);
+void Forward(int interval_sec);
+void Stop(int interval_sec);
+void Rise(int interval_sec);
 void RedChase(void);
+//void CircleChase(void);
 
 void init();
 bool emergency();
@@ -28,10 +31,9 @@ struct {
 } ardrone_parameter;
 
 int h, s, v;
-//long int a, b, c;
 IplImage *image = 0;
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv) {                          
 
 
 	if (!ardrone.open()) {
@@ -41,18 +43,11 @@ int main(int argc, char **argv) {
 
 	init();
 
-	//ardrone.takeoff();
+	ardrone.takeoff();
+
+	Stop(10);
 
 	RedChase();
-
-	//stop(5);
-	//forward(100);
-	//stop(50);
-	//roll(3);
-	//stop(5);
-	//forward(100);
-	//rise(1);
-	//stop(3);
 
 	//ardrone.landing();
 
@@ -89,7 +84,7 @@ void init() {
 }
 
 
-void roll(int interval_sec){
+void Roll(int interval_sec){
 
 	//int move_count = 0;
 	time_t old_time = time(NULL);
@@ -114,7 +109,7 @@ void roll(int interval_sec){
 	}
 }
 
-void forward(int interval_sec){
+void Forward(int interval_sec){
 
 	//int move_count = 0;
 	time_t old_time = time(NULL);
@@ -139,7 +134,7 @@ void forward(int interval_sec){
 	}
 }
 
-void stop(int interval_sec){
+void Stop(int interval_sec){
 
 	//int move_count = 0;
 	time_t old_time = time(NULL);
@@ -164,7 +159,7 @@ void stop(int interval_sec){
 	}
 }
 
-void rise(int interval_sec){
+void Rise(int interval_sec){
 
 	//int move_count = 0;
 	time_t old_time = time(NULL);
@@ -197,8 +192,14 @@ void RedChase() {
 		Mat hsv_image;
 		Mat image = ardrone.getImage();
 		Mat niti = Mat(Size(image.cols,image.rows),CV_8UC3);
+		//Mat gray_image;
+		//vector<Vec3f> circles;
+		int red_cnt = 0;
 
 		cvtColor(image, hsv_image, CV_BGR2HSV);
+		//cvtColor(image, gray_image, CV_BGR2GRAY);
+
+		//GaussianBlur(gray_image, gray_image, Size(11, 11), 10, 10);
 
 		int x=0, y=0, cnt=0;
 		for(int i=0; i<hsv_image.rows; i++) {
@@ -216,6 +217,7 @@ void RedChase() {
 						x += j;
 						y += i;
 						cnt++;
+						red_cnt++;
 
 					}
 				}
@@ -232,17 +234,63 @@ void RedChase() {
 
 		}
 		if(cnt!=0) {
+
+			//double h = hypot((x - (image.size().width)/2)^2, (y - (image.size().height)/2)^2);
+
 			x /= cnt;
 			y /= cnt;
 
 			circle(image, Point(x, y), 10, Scalar(255, 0, 0), -1, CV_AA);
+			circle(image, Point((image.size().width)/2, (image.size().height)/2), 10, Scalar(255, 0, 0), -1, CV_AA);
+
+		}
+
+		if(red_cnt > 20000 && (x < ((image.size().width)/2 - 50) || x > ((image.size().width)/2 + 50))) {
+
+			ardrone_parameter.vr = -(x - (image.size().width)/2) * 0.005;
+
+			ardrone_parameter.vx = 0.0;
+			ardrone_parameter.vy = 0.0;
+
+			ardrone.move3D(ardrone_parameter.vx, ardrone_parameter.vy, ardrone_parameter.vz, ardrone_parameter.vr);
+		
+		}
+		
+		if(red_cnt > 20000 && y < ((image.size().height)/2 - 20) || y > ((image.size().height)/2 + 20)) {
+
+			ardrone_parameter.vz = -(y - (image.size().height)/2) * 0.005;
+
+			ardrone_parameter.vx = 0.0;
+			ardrone_parameter.vy = 0.0;
+
+		} else {
+
+			ardrone_parameter.vx = 0.0;
+			ardrone_parameter.vy = 0.0;
+			ardrone_parameter.vz = 0.0;
+			ardrone_parameter.vr = 0.0;
+
+			ardrone.move3D(ardrone_parameter.vx, ardrone_parameter.vy, ardrone_parameter.vz, ardrone_parameter.vr);
+
 		}
 
 
+		//HoughCircles(gray_image, circles, CV_HOUGH_GRADIENT, 1, 100, 20, 50);
 
+		//vector<Vec3f>::iterator it = circles.begin();
+		//for(; it != circles.end(); ++it) {
+		//	Point center(saturate_cast<int>((*it)[0]), saturate_cast<int>((*it)[1]));
+		//	int radius = saturate_cast<int>((*it)[2]);
+		//	circle(image, center, radius,Scalar(0, 255, 0), 2);
+		//}
+
+		erode(niti, niti, Mat());
+		erode(niti, niti, Mat());
+		erode(niti, niti, Mat());
 
 		dilate(niti, niti, Mat());
-		erode(niti, niti, Mat());
+		dilate(niti, niti, Mat());
+		dilate(niti, niti, Mat());
 
 		if(!niti.empty()) imshow("camera",image);
 		if(!niti.empty()) imshow("niti",niti);
@@ -253,6 +301,7 @@ void RedChase() {
 	}
 
 }
+
 
 bool emergency() {
 
