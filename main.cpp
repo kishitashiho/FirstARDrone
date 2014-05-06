@@ -2,6 +2,8 @@
 #include "time.h"
 #include "math.h"
 
+#define RED_NUM 15000
+
 // --------------------------------------------------------------------------
 // main(Number of arguments, Argument values)
 // Description  : This is the entry point of the program.
@@ -18,7 +20,6 @@ void Forward(int interval_sec);
 void Stop(int interval_sec);
 void Rise(int interval_sec);
 void RedChase(void);
-//void CircleChase(void);
 
 void init();
 bool emergency();
@@ -192,16 +193,19 @@ void RedChase() {
 		Mat hsv_image;
 		Mat image = ardrone.getImage();
 		Mat niti = Mat(Size(image.cols,image.rows),CV_8UC3);
-		//Mat gray_image;
-		//vector<Vec3f> circles;
+		Mat gray_image;
+		vector<Vec3f> circles;
 		int red_cnt = 0;
 
 		cvtColor(image, hsv_image, CV_BGR2HSV);
-		//cvtColor(image, gray_image, CV_BGR2GRAY);
+		cvtColor(image, gray_image, CV_BGR2GRAY);
 
-		//GaussianBlur(gray_image, gray_image, Size(11, 11), 10, 10);
+		GaussianBlur(gray_image, gray_image, Size(11, 11), 10, 10);
+		//Canny(gray_image, gray_image, 50, 100);
 
-		int x=0, y=0, cnt=0;
+		
+
+		int image_x=0, image_y=0, cnt=0;
 		for(int i=0; i<hsv_image.rows; i++) {
 			for(int j=0; j<hsv_image.cols; j++) {
 
@@ -214,8 +218,8 @@ void RedChase() {
 						niti.data[col+1] = 255;
 						niti.data[col+2] = 255;
 
-						x += j;
-						y += i;
+						image_x += j;
+						image_y += i;
 						cnt++;
 						red_cnt++;
 
@@ -235,35 +239,36 @@ void RedChase() {
 		}
 		if(cnt!=0) {
 
-			//double h = hypot((x - (image.size().width)/2)^2, (y - (image.size().height)/2)^2);
+			image_x /= cnt;
+			image_y /= cnt;
 
-			x /= cnt;
-			y /= cnt;
-
-			circle(image, Point(x, y), 10, Scalar(255, 0, 0), -1, CV_AA);
+			circle(image, Point(image_x, image_y), 10, Scalar(255, 0, 0), -1, CV_AA);
 			circle(image, Point((image.size().width)/2, (image.size().height)/2), 10, Scalar(255, 0, 0), -1, CV_AA);
 
 		}
 
-		if(red_cnt > 20000 && (x < ((image.size().width)/2 - 50) || x > ((image.size().width)/2 + 50))) {
+		
 
-			ardrone_parameter.vr = -(x - (image.size().width)/2) * 0.005;
+		if(red_cnt > RED_NUM){
+			
+			if(image_x < ((image.size().width)/2 - 50) || image_x > ((image.size().width)/2 + 50)) {
+
+				ardrone_parameter.vr = -(image_x - (image.size().width)/2) * 0.005;
+			
+			}
+
+			if(image_y < ((image.size().height)/2 - 20) || image_y > ((image.size().height)/2 + 20)) {
+
+				ardrone_parameter.vz = -(image_y - (image.size().height)/2) * 0.005;
+
+			}
 
 			ardrone_parameter.vx = 0.0;
 			ardrone_parameter.vy = 0.0;
 
 			ardrone.move3D(ardrone_parameter.vx, ardrone_parameter.vy, ardrone_parameter.vz, ardrone_parameter.vr);
 		
-		}
-		
-		if(red_cnt > 20000 && y < ((image.size().height)/2 - 20) || y > ((image.size().height)/2 + 20)) {
-
-			ardrone_parameter.vz = -(y - (image.size().height)/2) * 0.005;
-
-			ardrone_parameter.vx = 0.0;
-			ardrone_parameter.vy = 0.0;
-
-		} else {
+		}  else {
 
 			ardrone_parameter.vx = 0.0;
 			ardrone_parameter.vy = 0.0;
