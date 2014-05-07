@@ -2,7 +2,9 @@
 #include "time.h"
 #include "math.h"
 
-#define RED_NUM 15000
+#define RED_NUM 15000		//赤色が検出された数（白の部分）
+#define RP_CONTROLER 0.005	//左右の追跡の定数
+#define ZP_CONTROLER 0.001	//上下追跡の定数
 
 // --------------------------------------------------------------------------
 // main(Number of arguments, Argument values)
@@ -203,7 +205,11 @@ void RedChase() {
 		GaussianBlur(gray_image, gray_image, Size(11, 11), 10, 10);
 		//Canny(gray_image, gray_image, 50, 100);
 
-		
+		double altitude = ardrone.getAltitude();
+		bool flag = emergency();
+		cout<<"高度："<<altitude<<endl;
+
+	
 
 		int image_x=0, image_y=0, cnt=0;
 		for(int i=0; i<hsv_image.rows; i++) {
@@ -253,20 +259,25 @@ void RedChase() {
 			
 			if(image_x < ((image.size().width)/2 - 50) || image_x > ((image.size().width)/2 + 50)) {
 
-				ardrone_parameter.vr = -(image_x - (image.size().width)/2) * 0.005;
+				ardrone_parameter.vr = -(image_x - (image.size().width)/2) * RP_CONTROLER;
 			
 			}
 
 			if(image_y < ((image.size().height)/2 - 20) || image_y > ((image.size().height)/2 + 20)) {
 
-				ardrone_parameter.vz = -(image_y - (image.size().height)/2) * 0.005;
+				ardrone_parameter.vz = -(image_y - (image.size().height)/2) * ZP_CONTROLER;
 
+				if(altitude > 1.0) {
+
+					ardrone_parameter.vz = 0.0;
+		
+				}
 			}
 
 			ardrone_parameter.vx = 0.0;
 			ardrone_parameter.vy = 0.0;
 
-			ardrone.move3D(ardrone_parameter.vx, ardrone_parameter.vy, ardrone_parameter.vz, ardrone_parameter.vr);
+			
 		
 		}  else {
 
@@ -275,9 +286,9 @@ void RedChase() {
 			ardrone_parameter.vz = 0.0;
 			ardrone_parameter.vr = 0.0;
 
-			ardrone.move3D(ardrone_parameter.vx, ardrone_parameter.vy, ardrone_parameter.vz, ardrone_parameter.vr);
-
 		}
+
+		ardrone.move3D(ardrone_parameter.vx, ardrone_parameter.vy, ardrone_parameter.vz, ardrone_parameter.vr);
 
 
 		//HoughCircles(gray_image, circles, CV_HOUGH_GRADIENT, 1, 100, 20, 50);
